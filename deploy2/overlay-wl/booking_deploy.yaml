@@ -1,0 +1,125 @@
+apiVersion: liberty.websphere.ibm.com/v1
+kind: WebSphereLibertyApplication
+metadata:
+    name: acmeair-booking
+    annotations:
+      argocd.argoproj.io/sync-wave: "5"
+spec:
+  license:
+    accept: true
+  applicationImage: docker-na-public.artifactory.swg-devops.com/hyc-wassvt-team-image-registry-docker-local/acmeair/acmeair-booking-service:ol-jdk8-java17
+  createKnativeService: false
+  pullPolicy: Always
+  expose: true
+  route:
+    path: "/booking"
+  env:
+  - name: USERNAME
+    value: admin
+  - name: PASSWORD
+    value: password
+  - name: MONGO_HOST
+    value: acmeair-booking-db
+  - name: JAEGER_AGENT_HOST
+    value: jaeger-all-in-one-inmemory-agent
+  - name: JAEGER_AGENT_PORT
+    value: '6832'
+  - name: ACMEAIR_STACKAA_AUTH_URL
+    valueFrom:
+      configMapKeyRef:
+        name: aa-routes
+        key: auth-route
+  - name: ACMEAIR_STACKAA_CUSTOMER_URL
+    valueFrom:
+      configMapKeyRef:
+        name: aa-routes
+        key: customer-route
+  - name: ACMEAIR_STACKAA_FLIGHT_URL
+    valueFrom:
+      configMapKeyRef:
+        name: aa-routes
+        key: flight-route
+  - name: JAEGER_ENDPOINT
+    value: 'http://jaeger-all-in-one-inmemory-collector:14268/api/traces'
+  - name: ACCESS_LOGGING_ENABLED
+    value: 'false'
+  - name: TRACE_SPEC
+    value: '*=info'
+  - name: LOGGING_FORMAT
+    value: 'simple'
+#  readinessProbe:
+#    httpGet:
+#      path: /health
+#      port: 9080
+#    initialDelaySeconds: 10
+#    periodSeconds: 5
+#  livenessProbe:
+#    httpGet:
+#      path: /health
+#      port: 9080
+#    initialDelaySeconds: 120
+#    periodSeconds: 15
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+    port: 9080
+---
+##### Booking Database  #####
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    service: acmeair-booking-db
+  name: acmeair-booking-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  ports:
+  - name: "27017"
+    port: 27017
+    protocol: TCP
+    targetPort: 27017
+  selector:
+    name: acmeair-booking-db
+status:
+  loadBalancer: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: acmeair-booking-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: acmeair-booking-db
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: acmeair-booking-db
+    spec:
+      volumes:
+        - name: acmeair-booking-db-1
+          emptyDir: {}
+        - name: acmeair-booking-db-2
+          emptyDir: {}
+      containers:
+      - image: mongo
+        name: acmeair-booking-db
+        ports:
+        - containerPort: 27017
+          protocol: TCP
+        resources: {}
+        volumeMounts:
+          - name: acmeair-booking-db-1
+            mountPath: /data/configdb
+          - name: acmeair-booking-db-2
+            mountPath: /data/db
+      restartPolicy: Always
+status: {}
