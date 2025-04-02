@@ -21,7 +21,7 @@
     <app.name>acmeair-bookingservice-java</app.name>
     <testServerHttpPort>9082</testServerHttpPort>
     <testServerHttpsPort>9445</testServerHttpsPort>
-    <!-- end::appdetails[]  -->
+    <!-- end::appdetails[]   -->
   </properties>
   <build>
     <plugins>
